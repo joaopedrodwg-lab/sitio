@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Sítio &middot; Gestão do Rebanho</title>
+<title>Fazenda Morro Alegre &middot; Gestão do Rebanho</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
@@ -311,7 +311,7 @@ a{color:inherit;}
       <path d="M6 40 H42" stroke="#1C2E20" stroke-width="2"/>
     </svg>
     <div class="brand-text">
-      <div class="kicker">Sítio Boa Esperança</div>
+      <div class="kicker">Fazenda Morro Alegre</div>
       <h1>Gestão do Rebanho</h1>
     </div>
   </div>
@@ -353,7 +353,7 @@ a{color:inherit;}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21 C6 16 3 12.5 3 8.5 A4.5 4.5 0 0 1 12 6.5 A4.5 4.5 0 0 1 21 8.5 C21 12.5 18 16 12 21 Z"/><path d="M9 10 H15 M12 7 V13"/></svg>
       Saúde &amp; Remédios
     </button>
-    <div class="foot-note">Sítio Boa Esperança<br>Sistema interno &middot; sem login</div>
+    <div class="foot-note">Fazenda Morro Alegre<br>Sistema interno &middot; sem login</div>
   </nav>
 
   <!-- ===================== CONTEÚDO ===================== -->
@@ -553,14 +553,14 @@ a{color:inherit;}
           </select>
         </div>
         <div class="field">
-          <label>Mãe</label>
-          <input type="text" id="fMae" list="listaMaes" placeholder="Nome da mãe (opcional)">
-          <datalist id="listaMaes"></datalist>
+          <label id="labelMae">Mãe</label>
+          <select id="fMae"><option value="">Selecione a mãe</option></select>
+          <p id="avisoMae" style="display:none; font-size:12px; color:var(--alert); margin-top:5px;">Nenhuma vaca cadastrada ainda. Cadastre a mãe primeiro na aba "Vacas".</p>
         </div>
         <div class="field">
-          <label>Pai</label>
-          <input type="text" id="fPai" list="listaPais" placeholder="Nome do pai (opcional)">
-          <datalist id="listaPais"></datalist>
+          <label id="labelPai">Pai</label>
+          <select id="fPai"><option value="">Selecione o pai</option></select>
+          <p id="avisoPai" style="display:none; font-size:12px; color:var(--alert); margin-top:5px;">Nenhum touro cadastrado ainda. Cadastre o pai primeiro na aba "Touros".</p>
         </div>
         <div class="field full" id="campoPrenhezWrap">
           <label>Data da prenhez (cobertura/IA)</label>
@@ -663,6 +663,13 @@ function porTipo(tipo){ return animais.filter(a=>a.tipo===tipo); }
 function encontrarPorNome(nome){
   if(!nome) return null;
   return animais.find(a=>a.nome.trim().toLowerCase() === nome.trim().toLowerCase()) || null;
+}
+function filhosDe(animal){
+  if(!animal) return [];
+  return animais.filter(a=>a.tipo==='bezerro' && (
+    (a.mae && a.mae.trim().toLowerCase() === animal.nome.trim().toLowerCase()) ||
+    (a.pai && a.pai.trim().toLowerCase() === animal.nome.trim().toLowerCase())
+  ));
 }
 function calcularIdade(dataNasc){
   if(!dataNasc) return '—';
@@ -767,6 +774,10 @@ function renderLista(tipo, filtro){
     if(tipo==='bezerro'){
       extra = `<div class="info-line">Mãe <b>${a.mae||'—'}</b></div><div class="info-line">Pai <b>${a.pai||'—'}</b></div>`;
     }
+    if(tipo==='vaca' || tipo==='touro'){
+      const filhos = filhosDe(a);
+      extra += `<div class="info-line"><span>Filhos</span><b>${filhos.length ? filhos.map(f=>f.nome).join(', ') : '—'}</b></div>`;
+    }
     return `
     <div class="animal-card ${tipo} ${doente?'doente':''}">
       <div class="row-top">
@@ -793,11 +804,25 @@ function abrirFormulario(tipo, id){
   document.getElementById('fId').value = id || '';
   document.getElementById('fTipo').value = tipo;
   document.getElementById('modalTitulo').textContent = id ? 'Editar '+rotulo[tipo].toLowerCase() : 'Novo(a) '+rotulo[tipo].toLowerCase();
-  document.getElementById('modalSub').textContent = 'Todos os campos podem ser editados depois, a qualquer momento.';
+  document.getElementById('modalSub').textContent = tipo==='bezerro'
+    ? 'Selecione a mãe e o pai já cadastrados. Os demais campos podem ser editados depois, a qualquer momento.'
+    : 'Todos os campos podem ser editados depois, a qualquer momento.';
 
-  // popular datalists de mãe/pai com nomes existentes
-  document.getElementById('listaMaes').innerHTML = porTipo('vaca').map(v=>`<option value="${v.nome}">`).join('');
-  document.getElementById('listaPais').innerHTML = porTipo('touro').map(v=>`<option value="${v.nome}">`).join('');
+  // popular seletores de mãe/pai com as vacas e touros já cadastrados
+  const vacasDisponiveis = porTipo('vaca');
+  const tourosDisponiveis = porTipo('touro');
+  const selMae = document.getElementById('fMae');
+  const selPai = document.getElementById('fPai');
+  selMae.innerHTML = '<option value="">Selecione a mãe</option>' + vacasDisponiveis.map(v=>`<option value="${v.nome}">${v.nome}</option>`).join('');
+  selPai.innerHTML = '<option value="">Selecione o pai</option>' + tourosDisponiveis.map(v=>`<option value="${v.nome}">${v.nome}</option>`).join('');
+
+  const ehBezerro = tipo === 'bezerro';
+  selMae.required = ehBezerro;
+  selPai.required = ehBezerro;
+  document.getElementById('labelMae').textContent = ehBezerro ? 'Mãe *' : 'Mãe';
+  document.getElementById('labelPai').textContent = ehBezerro ? 'Pai *' : 'Pai';
+  document.getElementById('avisoMae').style.display = (ehBezerro && vacasDisponiveis.length===0) ? 'block' : 'none';
+  document.getElementById('avisoPai').style.display = (ehBezerro && tourosDisponiveis.length===0) ? 'block' : 'none';
 
   document.getElementById('campoPrenhezWrap').style.display = tipo==='vaca' ? 'block' : 'none';
 
@@ -938,6 +963,9 @@ function renderArvore(id){
     return `<div class="tree-node ${classe}"><div class="role">${papel}</div><div class="name">${nome}</div></div>`;
   }
 
+  // filhos (bezerros) do animal em foco — só faz sentido para vacas e touros
+  const filhos = (animal.tipo==='vaca' || animal.tipo==='touro') ? filhosDe(animal) : [];
+
   wrap.innerHTML = `
     <div class="tree-gen">
       ${celula(geracao2.maePai, animal.mae? null:null, 'Avô materno', 'f')}
@@ -954,6 +982,11 @@ function renderArvore(id){
     <div class="tree-gen">
       <div class="tree-node focus"><div class="role">${rotulo[animal.tipo]}</div><div class="name">${animal.nome}</div></div>
     </div>
+    ${filhos.length ? `
+    <div class="tree-connector"></div>
+    <div class="tree-gen">
+      ${filhos.map(f=>`<div class="tree-node ${f.sexo==='M'?'f':'m'}"><div class="role">Filho(a)</div><div class="name">${f.nome}</div></div>`).join('')}
+    </div>` : ''}
   `;
 }
 
